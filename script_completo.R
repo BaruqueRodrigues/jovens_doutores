@@ -30,6 +30,47 @@ df_uso<- dataset %>%
 
 df_uso %>% glimpse()
 
+# Tabela descritiva -------------------------------------------------------
+
+df_uso %>% 
+  summarise(across(c(n_total_artigos:qualis_inferior, -parecerista),
+                   list(min, mean, median, sd, max),
+                   na.rm = TRUE)
+            ) %>% 
+  rename_with(., ~str_replace_all(., c("_1", "_2",
+                                       "_3", "_4",
+                                       "_5"),
+                                  c("_min", "_mean",
+                                    "_median", "_sd",
+                                    "_max")
+                                  )
+              ) %>% 
+  pivot_longer(c(1:20)) %>% 
+  mutate(estatistica = str_extract(name, c("min|mean|median|sd|max")),
+         name = str_remove(name, c("_min|_mean|_median|_sd|_max"))) %>% 
+  pivot_wider(names_from = "estatistica",
+              values_from = "value") %>% 
+  mutate("Distribuição" = list(df_uso$n_total_artigos,
+                      df_uso$n_web_qualis,
+                      df_uso$qualis_superior,
+                      df_uso$qualis_inferior),
+         "Boxplot" = `Distribuição`) %>%
+  select("Variável" = name,
+         "Mínimo" = min,
+         "Média" = mean,
+         "Mediana" = median,
+         "Desvio Padrão" = sd,
+         "Máximo" = max,
+         "Distribuição",
+         "Boxplot" ) %>% 
+  gt::gt() %>% 
+  gtExtras::gt_plt_dist("Distribuição") %>% 
+  gtExtras::gt_plt_dist("Boxplot", type = "boxplot")
+
+
+df_uso %>%
+select(n_total_artigos:qualis_inferior, -parecerista) %>% 
+  pivot_longer(c(1:4))
 # Datavis -----------------------------------------------------------------
 df_uso %>% 
   janitor::tabyl(sexo) %>% 
@@ -163,30 +204,118 @@ df_uso %>%
           legend.position = "bottom")
 
   # Correlação
-  df_uso %>%
-    pivot_longer(c(quant_discip, napresentacoes:tempo_doutor, -n_total_artigos)) %>% 
+  
+ cor_n_total_artigos <- df_uso %>% 
+    pivot_longer(c(napresentacoes,n_capitulos_livros,
+                   nlivros,parecerista,quant_discip ,tempo_doutor)) %>% 
     ggplot(aes(x = n_total_artigos, y =value ))+
     geom_smooth(method = "lm")+
     facet_wrap(~name)+
+    labs(y=NULL)+
     theme_minimal()+
     ggpubr::stat_cor(method = "pearson", label.x = 3, label.y = 130)+
-    theme(panel.border = element_rect(fill = NA, color = "lightgrey"))  
+    theme(panel.border = element_rect(fill = NA, color = "lightgrey")) 
   
-  #Correlação por sexo
-  #Correlação
-  df_uso %>%
-    pivot_longer(c(quant_discip, napresentacoes:tempo_doutor, -n_total_artigos)) %>% 
-    ggplot(aes(x = n_total_artigos, y =value, color = sexo))+
+  
+ cor_n_web_qualis <- df_uso %>% 
+    pivot_longer(c(napresentacoes,n_capitulos_livros,
+                   nlivros,parecerista,quant_discip ,tempo_doutor)) %>% 
+    ggplot(aes(x = n_web_qualis, y =value ))+
     geom_smooth(method = "lm")+
     facet_wrap(~name)+
+    labs(y=NULL)+
     theme_minimal()+
-    ggpubr::stat_cor(method = "pearson")+
+    ggpubr::stat_cor(method = "pearson", label.x = 3, label.y = 100)+
+    theme(panel.border = element_rect(fill = NA, color = "lightgrey")) 
+  
+  cor_qualis_superior <- df_uso %>% 
+    pivot_longer(c(napresentacoes,n_capitulos_livros,
+                   nlivros,parecerista,quant_discip ,tempo_doutor)) %>% 
+    ggplot(aes(x = qualis_superior, y =value ))+
+    geom_smooth(method = "lm")+
+    facet_wrap(~name)+
+    labs(y=NULL)+
+    theme_minimal()+
+    ggpubr::stat_cor(method = "pearson", label.x = 3, label.y = 50)+
+    theme(panel.border = element_rect(fill = NA, color = "lightgrey")) 
+  
+  cor_qualis_inferior <-df_uso %>% 
+    pivot_longer(c(napresentacoes,n_capitulos_livros,
+                   nlivros,parecerista,quant_discip ,tempo_doutor)) %>% 
+    ggplot(aes(x = qualis_inferior, y =value ))+
+    geom_smooth(method = "lm")+
+    facet_wrap(~name)+
+    labs(y=NULL)+
+    theme_minimal()+
+    ggpubr::stat_cor(method = "pearson", label.x = 3, label.y = 90)+
+    theme(panel.border = element_rect(fill = NA, color = "lightgrey")) 
+  
+  library(patchwork)
+  
+  cor_n_total_artigos+cor_n_web_qualis+cor_qualis_inferior+cor_qualis_superior
+  #Correlação por sexo
+  #Correlação
+  
+  cor_n_total_artigos_genero <- df_uso %>% 
+    pivot_longer(c(napresentacoes,n_capitulos_livros,
+                   nlivros,parecerista,quant_discip ,tempo_doutor)) %>% 
+    ggplot(aes(x = n_total_artigos, y =value , color = sexo))+
+    geom_smooth(method = "lm")+
+    facet_wrap(~name)+
+    labs(y=NULL)+
+    theme_minimal()+
+    ggpubr::stat_cor(aes(color = sexo),
+                     method = "pearson")+
     scale_color_manual(values = c("deeppink", "steelblue"))+
-    labs(x = "N Total de Artigos", 
-         y = NULL)+
     theme(panel.border = element_rect(fill = NA, color = "lightgrey"),
-          legend.position = "bottom") 
+          legend.position = "none") 
+  
+  
+  cor_n_web_qualis_genero <- df_uso %>% 
+    pivot_longer(c(napresentacoes,n_capitulos_livros,
+                   nlivros,parecerista,quant_discip ,tempo_doutor)) %>% 
+    ggplot(aes(x = n_web_qualis, y =value , color = sexo))+
+    geom_smooth(method = "lm")+
+    facet_wrap(~name)+
+    labs(y=NULL)+
+    theme_minimal()+
+    scale_color_manual(values = c("deeppink", "steelblue"))+
+    ggpubr::stat_cor(aes(color = sexo),
+                     method = "pearson")+
+    theme(panel.border = element_rect(fill = NA, color = "lightgrey"),
+          legend.position = "none") 
+  
+  cor_qualis_superior_genero <- df_uso %>% 
+    pivot_longer(c(napresentacoes,n_capitulos_livros,
+                   nlivros,parecerista,quant_discip ,tempo_doutor)) %>% 
+    ggplot(aes(x = qualis_superior, y =value , color = sexo))+
+    geom_smooth(method = "lm")+
+    facet_wrap(~name)+
+    labs(y=NULL)+
+    scale_color_manual(values = c("deeppink", "steelblue"))+
+    theme_minimal()+
+    ggpubr::stat_cor(aes(color = sexo),
+                     method = "pearson")+
+    theme(panel.border = element_rect(fill = NA, color = "lightgrey"),
+          legend.position = "none") 
+  
+  cor_qualis_inferior_genero <-df_uso %>% 
+    pivot_longer(c(napresentacoes,n_capitulos_livros,
+                   nlivros,parecerista,quant_discip ,tempo_doutor)) %>% 
+    ggplot(aes(x = qualis_inferior, y =value , color = sexo))+
+    geom_smooth(method = "lm")+
+    facet_wrap(~name)+
+    labs(y=NULL)+
+    scale_color_manual(values = c("deeppink", "steelblue"))+
+    theme_minimal()+
+    ggpubr::stat_cor(aes(color = sexo),
+                     method = "pearson")+
+    theme(panel.border = element_rect(fill = NA, color = "lightgrey"),
+          legend.position = "none")  
 
+  cor_n_total_artigos_genero+cor_n_web_qualis_genero+
+    cor_qualis_inferior_genero+cor_qualis_superior_genero
+  
 df_uso %>% 
   select(quant_discip, napresentacoes:tempo_doutor) %>% 
   mutate(across(c(quant_discip, napresentacoes:tempo_doutor), ~replace_na(., 0 ))) %>% 
